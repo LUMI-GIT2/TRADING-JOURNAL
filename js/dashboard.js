@@ -1,6 +1,8 @@
-// Dashboard functionality
+
 class Dashboard {
     constructor() {
+        this.performanceChart = null;
+        this.pairsChart = null;
         this.init();
     }
 
@@ -8,6 +10,7 @@ class Dashboard {
         this.loadStats();
         this.loadRecentTrades();
         this.initCharts();
+        this.setupResponsiveHandlers();
     }
 
     loadStats() {
@@ -48,13 +51,21 @@ class Dashboard {
     initCharts() {
         this.initPerformanceChart();
         this.initPairsChart();
+        
+        // Register charts for responsive handling
+        if (window.responsiveCharts) {
+            window.responsiveCharts.registerChart(this.performanceChart);
+            window.responsiveCharts.registerChart(this.pairsChart);
+        }
     }
 
     initPerformanceChart() {
-        const ctx = document.getElementById('performanceChart').getContext('2d');
+        const ctx = document.getElementById('performanceChart');
+        if (!ctx) return;
+        
         const stats = tradingApp.getDashboardStats();
         
-        new Chart(ctx, {
+        this.performanceChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: ['Wins', 'Losses', 'Open'],
@@ -67,13 +78,14 @@ class Dashboard {
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: true,
                 plugins: {
                     legend: {
                         position: 'bottom',
                         labels: {
                             color: '#e2e8f0',
                             font: {
-                                size: 12
+                                size: this.getResponsiveFontSize()
                             }
                         }
                     }
@@ -83,7 +95,9 @@ class Dashboard {
     }
 
     initPairsChart() {
-        const ctx = document.getElementById('pairsChart').getContext('2d');
+        const ctx = document.getElementById('pairsChart');
+        if (!ctx) return;
+        
         const pairPerformance = tradingApp.getPerformanceByPair();
         
         const pairs = Object.keys(pairPerformance);
@@ -92,7 +106,7 @@ class Dashboard {
             return perf.total > 0 ? (perf.wins / perf.total * 100) : 0;
         });
 
-        new Chart(ctx, {
+        this.pairsChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: pairs,
@@ -106,12 +120,16 @@ class Dashboard {
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: true,
                 scales: {
                     y: {
                         beginAtZero: true,
                         max: 100,
                         ticks: {
-                            color: '#94a3b8'
+                            color: '#94a3b8',
+                            font: {
+                                size: this.getResponsiveFontSize()
+                            }
                         },
                         grid: {
                             color: '#334155'
@@ -119,7 +137,10 @@ class Dashboard {
                     },
                     x: {
                         ticks: {
-                            color: '#94a3b8'
+                            color: '#94a3b8',
+                            font: {
+                                size: this.getResponsiveFontSize()
+                            }
                         },
                         grid: {
                             color: '#334155'
@@ -129,11 +150,36 @@ class Dashboard {
                 plugins: {
                     legend: {
                         labels: {
-                            color: '#e2e8f0'
+                            color: '#e2e8f0',
+                            font: {
+                                size: this.getResponsiveFontSize()
+                            }
                         }
                     }
                 }
             }
+        });
+    }
+
+    getResponsiveFontSize() {
+        if (window.innerWidth < 480) return 10;
+        if (window.innerWidth < 768) return 11;
+        return 12;
+    }
+
+    setupResponsiveHandlers() {
+        // Update charts on resize
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (this.performanceChart) {
+                    this.performanceChart.update();
+                }
+                if (this.pairsChart) {
+                    this.pairsChart.update();
+                }
+            }, 250);
         });
     }
 
